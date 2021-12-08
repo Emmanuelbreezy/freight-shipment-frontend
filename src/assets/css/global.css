@@ -11308,6 +11308,7 @@ body {
   /* Tooltip text */
 }
 .tooltips .tooltiptext {
+  visibility: hidden;
   min-width: 100px;
   width: 120px;
   background-color: var(--secondary-color);
@@ -11414,6 +11415,10 @@ body {
   border-top-left-radius: 15px !important;
   color: #fff;
 }
+.app--home .row .bottom--section .shipment-history-table table thead tr th {
+  border-right: 1px solid gray;
+  text-transform: capitalize !important;
+}
 .app--home .row .bottom--section .shipment-history-table table .tbody {
   margin-top: 2rem !important;
 }
@@ -11431,6 +11436,7 @@ body {
   padding-top: 1.5rem;
   padding-bottom: 1.5rem;
   font-family: "Poppins", sans-serif;
+  text-transform: capitalize !important;
 }
 .app--home .row .bottom--section .shipment-history-table table .tbody tr td a.btn-outline {
   padding-top: 0.2rem;
@@ -11635,6 +11641,10 @@ body {
   border-top-left-radius: 15px !important;
   color: #fff;
 }
+.app-allshipment .allshipment-table table thead tr th {
+  border-right: 1px solid gray;
+  text-transform: capitalize !important;
+}
 .app-allshipment .allshipment-table table .tbody {
   margin-top: 2rem !important;
 }
@@ -11652,6 +11662,7 @@ body {
   padding-top: 1.5rem;
   padding-bottom: 1.5rem;
   font-family: "Poppins", sans-serif;
+  text-transform: capitalize !important;
 }
 .app-allshipment .allshipment-table table .tbody tr td .btn-outline {
   padding-top: 0.2rem;

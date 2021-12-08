@@ -3,6 +3,7 @@ import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { Link, useNavigate } from 'react-router-dom';
 import Layout from '../../../hoc/Layout';
+import fetchApi from '../../../utils/fetch';
 
 interface InitialValuesType{
   name: string;
@@ -42,16 +43,8 @@ export default function Register() {
         }
       `
     }
-    fetch('http://localhost:5000/graphql',{
-      method:'POST',
-      headers:{
-        'Content-Type': 'application/json'
-      },
-      body:JSON.stringify(graphqlQuery)
-    })
-    .then((res) => {
-      return res.json();
-    })
+   
+    fetchApi(graphqlQuery,null)
     .then((resData) => {
       console.log(resData,'res');
       if(resData.errors && resData.errors[0].status === 422){

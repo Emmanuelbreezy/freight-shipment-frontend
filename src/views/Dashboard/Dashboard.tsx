@@ -5,84 +5,144 @@ import ShipFreight from '../../assets/images/ship-64.png';
 import AirFreight from '../../assets/images/airplane-64.png'; 
 import TruckFreight from '../../assets/images/truck-64.png'; 
 import AuthContext from '../../context/auth-context';
+import Loader from '../../components/Loader/Loader';
+import Table from '../../components/Table/Table';
+import fetchApi from '../../utils/fetch';
 
 interface DashboardProps{}
+//S514367
+
+interface FindShipmentType{
+    id:string;
+    name: string;
+    mode:string;
+    destination: string;
+    origin: string;
+    total: string;
+    status: string;
+}
+
+interface ShipmentType{
+    id:string;
+    name: string;
+    mode:string;
+    status: string;
+}
 
 export default function Dashboard(props:DashboardProps) {
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [findValue, setFindValue] = useState('');
-    const [findshipmentData, setFindShipmentData] = useState([]);
-    const [shipmentData, setShipmentData] = useState([]);
+    const [error, setError] = useState<String>('');
+    const [loading, setLoading] = useState<Boolean>(false);
+    const [findLoading, setFindLoading] = useState<Boolean>(false);
+    const [findValue, setFindValue] = useState<string>('');
+    const [findshipmentData, setFindShipmentData] = useState<FindShipmentType | null>(null);
+    const [shipmentData, setShipmentData] = useState<[ShipmentType] | [{}]>([{}]);
 
     const context = useContext(AuthContext);
 
 
-
     useEffect(() => {
-        if(!context.isAuthenticated) return;
         setLoading(true);
+        setError('');
+        if(!context.isAuthenticated){
+            return;
+          }
+            const page = 1;
+            const limit = 5;
             const graphqlQuery = {
+
                 query:`
                 {
-                    shipments {
+                    shipments(page:${page},perPage:${limit}) {
                         shipments{
                             id
                             name
                             mode
-                            type
-                            destination
-                            origin
+                            status
                         }
                     }
                 }
                 `
             }
-            fetch('http://localhost:5000/graphql',{
-                method:'POST',
-                headers:{
-                Authorization: 'Bearer '+ context.token,
-                'Content-Type': 'application/json'
-                },
-                body:JSON.stringify(graphqlQuery)
-            })
-            .then((res) => {
-                return res.json();
-            })
+            // fetchApi takes in the query and token
+            fetchApi(graphqlQuery,context.token)
             .then((resData) => {
-                console.log(resData,'shipment dasboard');
-                if(resData.errors && resData.errors[0].status === 422){
-                setError(
-                    "Validation failed"
-                );
-                setLoading(false);
-                return null;
-                }
-                if(resData.errors){
-                setError('Shipment failed to load');
-                setLoading(false);
-                return null;
-                }
-                if(resData.data.shipments.shipments){
-                    setTimeout(() => {
-                        setShipmentData(resData.data.shipments.shipments);
-                        setLoading(false);
-                    },1000);
-                }
+                  if(resData.errors && resData.errors[0].status === 422){
+                    setError(
+                        "Validation failed"
+                    );
+                    setLoading(false);
+                    return null;
+                    }
+                    if(resData.errors){
+                    setError('Shipment failed to load');
+                    setLoading(false);
+                    return null;
+                    }
+                    if(resData.data.shipments.shipments){
+                        setTimeout(() => {
+                            setShipmentData(resData.data.shipments.shipments);
+                            setLoading(false);
+                        },1000);
+                    }
             });
         
     }, [context,setLoading,setError])
 
     const handleFindChange = (e:any) => setFindValue(e.target.value); 
     const handleFind = () => {
-            console.log(findValue);
+            if(!context.isAuthenticated){
+                return null;
+              }
+            if(findValue){
+                setFindLoading(true);
+                setFindShipmentData(null);
+                setError('');
+                const graphqlQuery = {
+                    query:`
+                    {
+                        shipment(id: "${findValue}"){
+                                id
+                                name
+                                mode
+                                destination
+                                origin
+                                status
+                                total
+                        }
+                    }
+                    `
+                }
+                fetchApi(graphqlQuery,context.token)
+                .then((resData) => {
+                    if(resData.errors && resData.errors[0].status === 422){
+                    setError(
+                        "Validation failed"
+                    );
+                    setFindLoading(false);
+                    return null;
+                    }
+                    if(resData.errors){
+                        setError('Shipment failed to load');
+                        setFindLoading(false);
+                        return null;
+                    }
+                    if(resData.data.shipment){
+                        setTimeout(() => {
+                            setFindShipmentData(resData.data.shipment)
+                            setFindLoading(false);
+                        },1000);
+                    }
+                }); 
+            }
     }
 
 
     return (
         <Layout showNavTab={true}>
             <div className="app--home">
-           {loading  ? (<div className="text-center">Loading....</div>) : (<div className="row">
+            
+            {error && (<div className="alert alert-danger">{error}</div>)}
+           {loading  ? (<Loader size="lg" />) : (<div className="row">
                 <div className="col-12 col-lg-8">
                     <div className="top--section">
                         <div className="d-flex align-items-start justify-content-between">
@@ -113,7 +173,7 @@ export default function Dashboard(props:DashboardProps) {
                                     </Link>
                                 </div>
                                 <div className="col-12 col-lg-4 col_">
-                                    <Link to="/create?mode=road" className="card">
+                                    <Link to="/create?mode=land" className="card">
                                         <div className="card-body">
                                             <div className="img-container">
                                                 <img src={TruckFreight}  alt="" />
@@ -143,8 +203,12 @@ export default function Dashboard(props:DashboardProps) {
                         </div>
                     </div>
                     <div className="bottom--section mt-2">
+                        
                         {shipmentData.length > 0 ?
-                           ( <>
+                           ( 
+                           
+                               <>
+                       
                         <div className="d-flex align-items-center justify-content-between ">
                             <h4 className="display-4">Shipment history</h4>
                             <Link to="/dashboard/allshipment/" className="action--button  d-flex align-items-center">
@@ -157,89 +221,8 @@ export default function Dashboard(props:DashboardProps) {
                             </Link>
                         </div>
                         <div className="shipment-history-table">
-                          <div className="table-responsive">
-
-                            <table className="table table-borderless">
-                                <thead>
-                                    <tr>
-                                        <th scope="col">Shipment ID</th>
-                                        <th scope="col">Product</th>
-                                        <th scope="col">Mode</th>
-                                        <th scope="col" className="col-1">Status</th>
-                                        <th scope="col" className="col-1"></th>
-                                    </tr>
-                                </thead>
-                                <tbody className="tbody">
-                                    <tr>
-                                        <th scope="row">NHJ78776</th>
-                                        <td>Funiture</td>
-                                        <td>Sea</td>
-                                        <td>
-                                            <a className="btn status-active">Active</a>
-                                        </td>
-                                        <td>
-                                            <Link to="/shipment/2" className="btn act btn-outline d-flex align-items-center">
-                                                <span>Detail</span>
-                                                <svg style={{width:"12px",height:"12px"}} className="ms-1" version="1.1" id="Chevron_thin_right" xmlns="http://www.w3.org/2000/svg"  x="0px"
-                                                    y="0px" viewBox="0 0 20 20" fill="#333" enable-background="new 0 0 20 20">
-                                                <path d="M13.25,10L6.109,2.58c-0.268-0.27-0.268-0.707,0-0.979c0.268-0.27,0.701-0.27,0.969,0l7.83,7.908
-                                                    c0.268,0.271,0.268,0.709,0,0.979l-7.83,7.908c-0.268,0.271-0.701,0.27-0.969,0c-0.268-0.269-0.268-0.707,0-0.979L13.25,10z"/>
-                                                </svg>
-                                            </Link>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th scope="row"># NHJ78776</th>
-                                        <td>Funiture</td>
-                                        <td>Sea</td>
-                                        <td>
-                                            <a className="btn status-completed">Completed</a>
-                                        </td>
-                                        <td>
-                                            <a className="btn act btn-outline d-flex align-items-center">
-                                                <span>Detail</span>
-                                                <svg style={{width:"12px",height:"12px"}} className="ms-1" version="1.1" id="Chevron_thin_right" xmlns="http://www.w3.org/2000/svg"  x="0px"
-                                                    y="0px" viewBox="0 0 20 20" fill="#333" enable-background="new 0 0 20 20">
-                                                <path d="M13.25,10L6.109,2.58c-0.268-0.27-0.268-0.707,0-0.979c0.268-0.27,0.701-0.27,0.969,0l7.83,7.908
-                                                    c0.268,0.271,0.268,0.709,0,0.979l-7.83,7.908c-0.268,0.271-0.701,0.27-0.969,0c-0.268-0.269-0.268-0.707,0-0.979L13.25,10z"/>
-                                                </svg>
-                                            </a>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th scope="row">NHJ78776</th>
-                                        <td>Funiture</td>
-                                        <td>Sea</td>
-                                        <td>Active</td>
-                                        <td>
-                                           <a className="btn act btn-outline d-flex align-items-center">
-                                                <span>Detail</span>
-                                                <svg style={{width:"12px",height:"12px"}} className="ms-1" version="1.1" id="Chevron_thin_right" xmlns="http://www.w3.org/2000/svg"  x="0px"
-                                                    y="0px" viewBox="0 0 20 20" fill="#333" enable-background="new 0 0 20 20">
-                                                <path d="M13.25,10L6.109,2.58c-0.268-0.27-0.268-0.707,0-0.979c0.268-0.27,0.701-0.27,0.969,0l7.83,7.908
-                                                    c0.268,0.271,0.268,0.709,0,0.979l-7.83,7.908c-0.268,0.271-0.701,0.27-0.969,0c-0.268-0.269-0.268-0.707,0-0.979L13.25,10z"/>
-                                                </svg>
-                                            </a>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th scope="row">NHJ78776</th>
-                                        <td className="truncate">Funiture</td>
-                                        <td>Sea</td>
-                                        <td>Active</td>
-                                        <td>@mdo</td>
-                                    </tr>
-                                    <tr>
-                                        <th scope="row">NHJ78776</th>
-                                        <td>Funiture</td>
-                                        <td>Sea</td>
-                                        <td>Active</td>
-                                        <td>@mdo</td>
-                                    </tr>
-                                    
-                                </tbody>
-                            </table>
-                            </div>
+                            {/* Table components from utils */}
+                          <Table shipments={shipmentData} />
                         </div>
                         </>)
                         
@@ -260,39 +243,44 @@ export default function Dashboard(props:DashboardProps) {
                                     <div className="input-gp mb-3">
                                             <input value={findValue} type="text" className="form-control" placeholder="Search by shipment ID" aria-label="" aria-describedby="basic-addon2" 
                                             onChange={handleFindChange}/>
-                                            <button className="btn btn-primary" onClick={handleFind}>Find</button>
+                                            <button className={`btn btn-primary ${findLoading && "disabled" }`} onClick={handleFind}>
+                                            {findLoading && (<span className="spinner-border me-2 spinner-border-sm" role="status" aria-hidden="true"></span>)}
+                                              Find
+                                            </button>
+
                                             </div>
                                     </div>
                                 
+                                
 
-                                {findshipmentData.length > 0 ? (<div className="shipment--display">
+                                {findshipmentData ? (<div className="shipment--display">
                                     <div className="shipment--map">
                                         map cant display
                                     </div>
 
                                     <div className="_shiping-details">
                                        <div className="shipping--location">
-                                           <span className="loc-place">Atlana to Chicago apple store</span>
-                                           <h5>NHJ78652365</h5>
+                                           <span className="loc-place">{findshipmentData.origin} to {findshipmentData.destination}</span>
+                                           <h5>{findshipmentData.id}</h5>
                                        </div>
                                        <p className="shipping--desc">
-                                           Lorem ipsum, dolor sit amet consectetur adipisicing elit. Cupiditate possimus quod officia atque ea saepe repellat libero? Ab totam maxime et
+                                         {findshipmentData.name}
                                        </p>
                                         <div className="shipping--lis-div">
                                             <ul className="lis_ul">
                                                 <li>
                                                     <span>Mode</span>
-                                                    <h5>Sea</h5>
+                                                    <h5>{findshipmentData.mode}</h5>
                                                 </li>
                                                 <li className="lis-divider" />
                                                 <li>
                                                     <span>Status</span>
-                                                    <h5>Active</h5>
+                                                    <h5>{findshipmentData.status}</h5>
                                                 </li>
                                             </ul>
                                         </div>
                                     <div className="view-shipment-action">
-                                        <a className="btn"> See more</a>
+                                        <Link to={`/shipment/${findshipmentData.id}`} className="btn"> See more</Link>
                                     </div>
                                     </div>
 

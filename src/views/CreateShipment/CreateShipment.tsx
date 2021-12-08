@@ -8,6 +8,7 @@ import AuthContext from '../../context/auth-context';
 import ShipFreight from '../../assets/images/ship-64.png'; 
 import AirFreight from '../../assets/images/airplane-64.png'; 
 import TruckFreight from '../../assets/images/truck-64.png'; 
+import fetchApi from '../../utils/fetch';
 
 interface CreateShipmentProps{}
 
@@ -74,15 +75,19 @@ export default function CreateShipment(props:CreateShipmentProps) {
                                 }]);
 
     useEffect(() => {
-        console.log(context.isAuthenticated,'inside');
+        
         if(searchParams.get('mode')){
             const _mode:any = searchParams.get('mode');
-            if(_mode !== 'sea' || _mode !== 'land' || _mode !== 'air') return;
-            const _newValues = {
-                ...initialValues,
-                mode:_mode
+            console.log(_mode,'inside');
+
+            if(_mode === 'sea' || _mode === 'land' || _mode === 'air') {
+                const _newValues = {
+                    ...initialValues,
+                    mode:_mode
+                }
+                setInitialValues(_newValues);
+
             }
-            setInitialValues(_newValues);
         }
     }, [context,searchParams])
 
@@ -151,22 +156,27 @@ export default function CreateShipment(props:CreateShipmentProps) {
 
 
     const handleSubmitFunc = (objData:ObjectType) => {
-        setLoading(true);
         if(context.isAuthenticated){
-            const cargoList = objData.cargo.length > 0 ? objData.cargo.map((res) =>(
-                {...res}
-            )) : [];
-            const serviceList = objData.services.length > 0 ? objData.services.map((item) =>(
+            setLoading(true);
+            let cargoList = objData.cargo.length > 0 ? JSON.stringify(objData.cargo.map((res) =>(
+                {
+                    type:res.type,
+                    description:res.description,
+                    volume:res.volume
+                }
+            ))).replace(/"([^(")"]+)":/g,"$1:") : JSON.stringify([]);
+            
+            const serviceList = objData.services.length > 0 ? JSON.stringify(objData.services.map((item) =>(
                 {...item}
-            )) : [];
+            ))).replace(/"([^(")"]+)":/g,"$1:") : JSON.stringify([]);
 
-            console.log(JSON.stringify(cargoList),serviceList,'__');
+
             const graphqlQuery = {
             query:`
                 mutation{
                     createShipment(shipmentInput: {
                         name:"${objData.name}",
-                       cargo:${JSON.stringify(cargoList)},
+                       cargo:${cargoList},
                        mode: "${objData.mode}",
                        type: "${objData.type}",
                        destination: "${objData.destination}",
@@ -180,19 +190,9 @@ export default function CreateShipment(props:CreateShipmentProps) {
                 }
             `
             }
-            fetch('http://localhost:5000/graphql',{
-            method:'POST',
-            headers:{
-                Authorization: 'Bearer '+ context.token,
-                'Content-Type': 'application/json'
-                },
-                body:JSON.stringify(graphqlQuery)
-            })
-            .then((res) => {
-                return res.json();
-            })
+           
+            fetchApi(graphqlQuery,context.token)
             .then((resData) => {
-                console.log(resData,'create');
                 if(resData.errors && resData.errors[0].status === 422){
                 setError(
                 "Validation failed. Make sure the email address"
@@ -205,10 +205,12 @@ export default function CreateShipment(props:CreateShipmentProps) {
                     setLoading(false);
                     return null;
                 }
-                setTimeout(() => {
-                    setLoading(false);
-                   // navigate('/shipment/:id');
-                },1000)
+                if(resData.data.createShipment){
+                    setTimeout(() => {
+                        setLoading(false);
+                       navigate(`/shipment/${resData.data.createShipment.id}/`);
+                    },1000)
+                }
         })
 
       }
@@ -232,7 +234,6 @@ export default function CreateShipment(props:CreateShipmentProps) {
         initialValues:initialValues,
         validationSchema:createSchema,
         onSubmit:(values)  => {
-            console.log(values,'values');
             const obj:ObjectType = {
                 name: values.name,
                 cargo: cargoInputList,

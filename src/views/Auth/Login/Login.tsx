@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import Layout from '../../../hoc/Layout';
+import fetchApi from '../../../utils/fetch';
 
 
 interface InitialValuesType{
@@ -18,8 +19,8 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [initialValues,setInitialValues] = useState<InitialValuesType>({
-    email: '',
-    password: ''
+    email: 'emma@gmail.com',
+    password: '12345'
   });
 
 
@@ -35,17 +36,9 @@ export default function Login() {
         }
       `
     }
-    fetch('http://localhost:5000/graphql',{
-      method:'POST',
-      headers:{
-        'Content-Type': 'application/json'
-      },
-      body:JSON.stringify(graphqlQuery)
-    })
-    .then((res) => {
-      return res.json();
-    })
+    fetchApi(graphqlQuery,null)
     .then((resData) => {
+      console.log(resData,'login');
       if(resData.errors && resData.errors[0].status === 422){
        setError(
           "Validation failed. Make sure the email address isn't used yet"
@@ -63,7 +56,7 @@ export default function Login() {
         localStorage.setItem('userId',resData.data.login.userId);
         setTimeout(() => {
           setLoading(false);
-          navigate('/dashboard');
+          navigate('/');
         },1000)
 
       }

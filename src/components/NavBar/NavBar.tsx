@@ -1,6 +1,7 @@
 import React, { useState,useContext,useEffect } from 'react'
 import {Link} from "react-router-dom";
 import AuthContext from '../../context/auth-context';
+import fetchApi from '../../utils/fetch';
 
 
 export default function NavBar() {
@@ -12,8 +13,9 @@ export default function NavBar() {
      
     
     useEffect(() => {
-      if(!context.isAuthenticated) return;
-      console.log(context.isAuthenticated,'---');
+      if(!context.isAuthenticated){
+        return;
+      }
       setAuth(true);
       setLoading(true);
         const graphqlQuery = {
@@ -25,19 +27,9 @@ export default function NavBar() {
               }
             `
           }
-          fetch('http://localhost:5000/graphql',{
-            method:'POST',
-            headers:{
-                Authorization: 'Bearer '+ context.token,
-                'Content-Type': 'application/json'
-            },
-            body:JSON.stringify(graphqlQuery)
-          })
-          .then((res) => {
-            return res.json();
-          })
+         
+          fetchApi(graphqlQuery,context.token)
           .then((resData) => {
-      console.log(resData);
 
             if(resData.errors && resData.errors[0].status === 422){
               setError(

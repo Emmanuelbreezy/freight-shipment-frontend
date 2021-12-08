@@ -1,35 +1,235 @@
-import React,{useState} from 'react';
+import React,{useState,useContext,useEffect} from 'react';
 import { Link } from 'react-router-dom';
-// import Table from '../../components/Table/Table';
+import AuthContext from '../../context/auth-context';
+import Table from '../../components/Table/Table';
 import Layout from '../../hoc/Layout';
+import fetchApi from '../../utils/fetch';
+import Loader from '../../components/Loader/Loader';
 
 
 interface ListShipmentProps{}
 
+interface ShipmentType{
+    id:string;
+    name: string;
+    mode:string;
+    status: string;
+    origin: string;
+    destination: string;
+    total: string;
+}
+
 export default function ListShipment(props:ListShipmentProps) {
-    const [searchItem,setSearchItem] = useState('');
-    const [searchError,setSearchError] = useState<String>('');
-    const [dropdown, setDropdown] = useState<Boolean>(false);
+    const context = useContext(AuthContext);
 
-    const handleDropdown = (e:any) => {
+    const [error, setError] = useState<String>('');
+    const [loading, setLoading] = useState<Boolean>(false);
+    const [findLoading, setFindLoading] = useState<Boolean>(false);
+    const [findValue, setFindValue] = useState<string>('');
+    
+    const [shipmentData, setShipmentData] = useState<[ShipmentType] | [{}]>([{}]);
 
-    }
+    const [currentPage, setcurrentPage] = useState(1);
+    const [itemsPerPage, setitemsPerPage] = useState(10);
+    const [totalShipments, setTotalShipments] = useState(null);
+    
 
+     
+    useEffect(() => {
+        setLoading(true);
+        setError('');
+        if(!context.isAuthenticated){
+            return;
+          }
+        loadAllShipments(currentPage,itemsPerPage);
+           
+        
+    }, [context,setLoading,setError]);
+
+
+    // handle Input value change
     const handleChange =(e:any) => {
-        setSearchItem(e.target.value);
+        const val = e.target.value;
+        setFindValue(e.target.value);
+        if(!val.trim()) {
+            setError('');
+            setFindLoading(false);
+            return loadAllShipments(currentPage,itemsPerPage);
+        }
+        handleFindShipmentById(val);
     }
+
+
+
+    const loadAllShipments = (currentPage:number,itemsPerPage:number) =>{
+       
+        const graphqlQuery = {
+            query:`
+            {
+                shipments(page:${currentPage},perPage:${itemsPerPage}) {
+                    shipments{
+                        id
+                        name
+                        origin
+                        destination
+                        mode
+                        total
+                        status
+                    }
+                    totalShipments
+                }
+            }
+            `
+        }
+        // fetchApi takes in the query and token
+        fetchApi(graphqlQuery,context.token)
+        .then((resData) => {
+             console.log(resData,'shipment dasboard');
+              if(resData.errors && resData.errors[0].status === 422){
+                setError(
+                    "Validation failed"
+                );
+                setLoading(false);
+                return null;
+                }
+                if(resData.errors){
+                setError('Shipment failed to load');
+              
+                setLoading(false);
+
+                return null;
+                }
+                if(resData.data.shipments.shipments){
+                    setTimeout(() => {
+                        setShipmentData(resData.data.shipments.shipments);
+                        setTotalShipments(resData.data.shipments.totalShipments);
+                        setLoading(false);
+                    },1000);
+                }
+        });
+    }
+
+
+   
+
+    const handleFindShipmentById = (value:String) => {
+
+        if(!context.isAuthenticated){
+            return null;
+          }
+        if(value){
+            setFindLoading(true);
+            setError('');
+            const graphqlQuery = {
+                query:`
+                {
+                    shipment(id: "${value}"){
+                            id
+                            name
+                            origin
+                            destination
+                            mode
+                            total
+                            status
+                    }
+                }
+                `
+            }
+            fetchApi(graphqlQuery,context.token)
+            .then((resData) => {
+                console.log(resData,'SEARCH')
+                if(resData.errors && resData.errors[0].status === 422){
+                setError(
+                    "Validation failed"
+                );
+                setFindLoading(false);
+                return null;
+                }
+                if(resData.errors){
+                    setError('Shipment ID Invalid');
+                    setShipmentData([{}]);
+                    setFindLoading(false);
+                    return null;
+                }
+                if(resData.data.shipment){
+                    setTimeout(() => {
+                        setShipmentData([
+                            {
+                                ...resData.data.shipment
+                            }]);
+                        setFindLoading(false);
+                    },1000);
+                }
+            }); 
+
+        }
+    }
+
+    const handlePaging = (num:any) => {
+        const number = Number(num);
+        console.log(number);
+        setcurrentPage(number);
+        loadAllShipments(number,itemsPerPage);
+    }
+
+    const handleNextButton = () => {
+        if(totalShipments){
+            if((currentPage * itemsPerPage)  != totalShipments){
+                setcurrentPage(currentPage + 1);
+            }
+        }
+    }
+
+    const handlePrevButton = () => {
+        if(currentPage > 1){
+            setcurrentPage(currentPage - 1);
+        }
+    }
+
+
+    const paginationRendering = () => {
+        if(totalShipments){
+            const listOfPages = [];
+            for(var i = 1; i< Math.ceil(totalShipments/itemsPerPage); i++){
+                listOfPages.push(i);
+            }
+            
+            console.log(listOfPages);
+            // const indexOfLastItem = currentPage * itemsPerPage;
+            // const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+            
+            const renderPagesNumbers = listOfPages.map((number:number) =>{
+            return (
+                <li key={number}  className={`page-item ${currentPage === number && "active"}`}>
+                    <a className="page-link pointer"  style={{cursor:"pointer"}}
+                      onClick={() =>handlePaging(number)}>
+                        {number}
+                    </a>
+                </li>
+            )
+        }) 
+
+        return renderPagesNumbers;
+    
+        }
+    }
+
+    console.log(currentPage,'cuuuu');
  
     return (
         <Layout showNavTab={true}>
              <div className="app-allshipment">
+                {error && (<div className="alert alert-danger">{error}</div>)}
+
+
+                {loading  ? (<Loader size="lg" />) : (
+                <>
                 <div className="allshipment-searchbar-wrapper">
                        <div className="col-5 col-md-6 col-lg-9">
-                        <input type="text" value={searchItem} name="search" className="form-control" placeholder="Search by shipment ID" aria-label="" aria-describedby="basic-addon2" 
+                        <input type="text" value={findValue} name="search" className="form-control" placeholder="Search by shipment ID" aria-label="" aria-describedby="basic-addon2" 
                             onChange={(e) => handleChange(e)}
                         />
-                        {searchError ? (
-                            <div className="invalid-feedback">{searchError}</div>
-                        ) : null}
+                     
                         </div>
                         <Link to="/create" className="btn new-shipment-btn btn-primary">New Shipment</Link>
                         <button className="btn  btn-sm btn-outline-secondary export-btn tooltips">
@@ -46,92 +246,42 @@ export default function ListShipment(props:ListShipmentProps) {
                      <div className="d-flex mb-3 align-items-center justify-content-between">
                        <h4 className="display-4">Shipment history</h4>
                         <div>
-                            <span className="display-span">Sort by:</span>
-                            <div className="btn-group">
-                                <button type="button" className="btn btn-outline  dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                    shipmentID
-                                </button> 
-                                <ul className="dropdown-menu">
-                                    <li>
-                                        <Link to="/shipment/UFGTRE" className="dropdow-item">Detail</Link>
-                                    </li>
-                                    <li>
-                                    <Link to="/shipment/edit?=UIODFT" className="dropdow-item">Edit</Link>
-                                    </li>
-                                    <li>
-                                        <a className="dropdow-item">Delete</a>
-                                    </li>
-                                </ul>   
-                            </div>
+                            <span className="display-span"></span>
                         </div>
                      </div>
-                       <div className="table-responsive">
-                                <table className="table table-borderless">
-                                    <thead>
-                                        <tr>
-                                            <th scope="col">Shipment ID</th>
-                                            <th scope="col">Product</th>
-                                            <th scope="col">Orgin</th>
-                                            <th scope="col">Destination</th>
-                                            <th scope="col">Mode</th>
-                                            <th scope="col">Total</th>
-                                            <th scope="col" className="col-1">Status</th>
-                                            <th scope="col" className="col-1"></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="tbody">
-                                        <tr>
-                                            <th scope="row">NHJ78776</th>
-                                            <td>Funiture</td>
-                                            <td>Funiture</td>
-                                            <td>Funiture</td>
-                                            <td>Sea</td>
-                                            <td>1000</td>
-                                            <td>
-                                                <a className="btn status-active">Active</a>
-                                            </td>
-                                            <td>
-                                                <div className="btn-group">
-                                                    <button type="button" onClick={(e) => handleDropdown(e)} className="btn act btn-outline  dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                                        Action
-                                                    </button> 
-                                                    <ul className="dropdown-menu">
-                                                        <li>
-                                                            <Link to="/shipment/UFGTRE" className="dropdow-item">Detail</Link>
-                                                        </li>
-                                                        <li>
-                                                        <Link to="/shipment/edit?=UIODFT" className="dropdow-item">Edit</Link>
-                                                        </li>
-                                                        <li>
-                                                            <a className="dropdow-item">Delete</a>
-                                                        </li>
-                                                    </ul>   
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        
-                                    </tbody>
-                                </table>
-                            </div>
 
-                            <div className="pagination mt-2">
-                                <div className="col-12">
-                                  <nav aria-label="Page navigation example">
-                                    <ul className="pagination justify-content-end">
-                                        <li className="page-item disabled">
-                                        <a className="page-link" href="#"  aria-disabled="true">Previous</a>
-                                        </li>
-                                        <li className="page-item"><a className="page-link" href="#">1</a></li>
-                                        <li className="page-item"><a className="page-link" href="#">2</a></li>
-                                        <li className="page-item"><a className="page-link" href="#">3</a></li>
-                                        <li className="page-item">
-                                        <a className="page-link" href="#">Next</a>
-                                        </li>
-                                    </ul>
-                                    </nav>
-                                </div>
+                     {!error && (
+                         <>
+                      {/* Table components display the shipmentData */}
+                      {findLoading ? <Loader size="sm" /> : (
+                          <>
+                        <Table shipments={shipmentData} />
+
+                        <div className="pagination mt-2">
+                            <div className="col-12">
+                            <nav aria-label="Page navigation example">
+                                <ul className="pagination justify-content-end">
+                                    <li className="page-item">
+                                    <a className="page-link pointer"  aria-disabled="true" style={{cursor:"pointer"}} onClick={handlePrevButton}>Previous</a>
+                                    </li>
+                                     {paginationRendering()}
+                                    <li className="page-item">
+                                    <a className="page-link pointer" style={{cursor:"pointer"}} onClick={handleNextButton}>Next</a>
+                                    </li>
+                                </ul>
+                                </nav>
                             </div>
-                </div>
+                        </div>
+                            </>
+
+                      )}
+                            </>
+                       )}
+                    </div>
+                    </>
+                    )}
+
+                
             </div>
         </Layout>
 

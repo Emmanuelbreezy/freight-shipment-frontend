@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {Routes, Route , useNavigate,Navigate} from "react-router-dom";
 import Detail from './views/Detail/Detail';
-import Home from './views/Home/Home';
 import Register from './views/Auth/Register/Register';
 import Login from './views/Auth/Login/Login';
 import ProtectedRoute from './hook/protectedRoute';
@@ -12,26 +11,30 @@ import UpdateShipment from './views/UpdateShipment/UpdateShipment';
 import AuthContext from './context/auth-context';
 import AuthRoute from './hook/authRoute';
 
+function verifyAuth(){
+  const _token:any = localStorage.getItem('token');
+  const _userId:any = localStorage.getItem('userId');
+  const checkAuth:boolean = _token && _userId ? true : false;
 
+  return [_token,_userId,checkAuth];
+ 
+}
 
 
 function App() {
   const navigator = useNavigate();
+  const [_token,_userId,checkAuth] = verifyAuth();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [userId, setUserId] = useState<string|null>('');
   const [token, setToken] = useState<string|null>('');
 
   useEffect(() => {
-    const _token:string|null = localStorage.getItem('token');
-    const _userId:string|null = localStorage.getItem('userId');
-    const checkAuth:boolean = _token && _userId ? true : false;
-   
     if(checkAuth){
       setIsAuthenticated(checkAuth);
       setUserId(_userId);
       setToken(_token);
     }
-  },[setIsAuthenticated,setUserId,setToken])
+  },[_token,_userId,checkAuth])
 
   const logoutHandler = () =>{
     localStorage.removeItem('userId');
@@ -54,7 +57,7 @@ function App() {
         <Route path="/signup" element={<AuthRoute><Register  /></AuthRoute>} />
         <Route path="/create" element={<ProtectedRoute><CreateShipment/></ProtectedRoute>} />
         <Route path="/shipment/update" element={<ProtectedRoute><UpdateShipment/></ProtectedRoute>} />
-        <Route path="/shipment/:id" element={<ProtectedRoute><Detail/></ProtectedRoute>} />
+        <Route path="/shipment/:id/" element={<ProtectedRoute><Detail/></ProtectedRoute>} />
         <Route path="/dashboard/allshipment/" element={<ProtectedRoute><ListShipment/></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard/></ProtectedRoute>} />
         <Route path="/" element={<Navigate to="/dashboard" />} />

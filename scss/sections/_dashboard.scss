@@ -91,10 +91,13 @@
                         border-top-right-radius: 15px !important;
                         border-top-left-radius: 15px !important;
                         
+                        
                         color: #fff;
                         tr{
                             
                             th{
+                                border-right: 1px solid gray;
+                                text-transform: capitalize !important;
                             }
                         }
                     }
@@ -117,6 +120,8 @@
                                 padding-top: 1.5rem;
                                 padding-bottom: 1.5rem;
                                 font-family: 'Poppins', sans-serif;
+                                text-transform: capitalize !important;
+
                             }
 
                             td{
